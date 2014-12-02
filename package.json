@@ -1,6 +1,6 @@
 {
   "name": "items-store",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A flux-like architecture with a syncing items store",
   "main": "index.js",
   "scripts": {
