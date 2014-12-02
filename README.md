@@ -150,11 +150,11 @@ You can use it in provided read and write methods when getting more information 
 
 #### static `fetch(fn, callback)`
 
-Calls `fn` (`function(getItem, getItemInfo)`) multiple times until all referenced items are available. Than calls `callback` (`function(err, result)`) with the return value.
+Calls `fn` (`function(addDependency)`) multiple times until all referenced items are available. Than calls `callback` (`function(err, result)`) with the return value.
 
 If `fn` throws an error `callback` is called immediately with the error.
 
-The provided function `getItem(Store, id)` reads an item from a store. The provided function `getItemInfo(Store, id)` reads item information from a store.
+The provided function `addDependency(Store, id)` tell the fetcher that the `fn` used `Store` to read an item `id`. You must call it for each item read. You must not write to stores.
 
 
 ### `ItemsStoreLease`
@@ -165,9 +165,9 @@ Create a new instance.
 
 #### `capture(fn, onUpdate)`
 
-Calls `fn` (`function(getItem, getItemInfo)`) and starts listening to item updates (if not already listening). `onUpdate` is called when an item was updated. Calling this method also stops listening to items that are no longer referenced by the `fn`.
+Calls `fn` (`function(addDependency)`) and starts listening to item updates (if not already listening). `onUpdate` is called when an item was updated. Calling this method also stops listening to items that are no longer referenced by the `fn`.
 
-The provided function `getItem(Store, id)` reads an item from a store. The provided function `getItemInfo(Store, id)` reads item information from a store.
+The provided function `addDependency(Store, id)` tell the fetcher that the `fn` used `Store` to read an item `id`. You must call it for each item read. You must not write to stores.
 
 #### `close()`
 
@@ -188,11 +188,19 @@ The context of the component must contain a key `stores` which is an object cont
 
 This function should create the component state from `stores` and `params` and return it.
 
-`stores` is an object containing functions for each store. i. e. 
+`stores` is an object containing a dependency-tracking version of each store i. e. 
 ```
 {
-  Messages: { [Function getItem] info: [Function getItemInfo] },
-  Users: { [Function getItem] info: [Function getItemInfo] }
+	Messages: {
+		getItem: [Function],
+		getItemInfo: [Function],
+		isItemAvailable: [Function]
+	},
+	Users: {
+		getItem: [Function],
+		getItemInfo: [Function],
+		isItemAvailable: [Function]
+	}
 }
 ```
 
@@ -203,13 +211,15 @@ Example for a `getState` method:
 ``` javascript
 statics: {
 	getState: function(stores, params) {
-		var thread = stores.Threads(params.threadId);
+		if(!stores.Threads.isItemAvailable(params.threadId))
+			return { loading: true };
+		var thread = stores.Threads.getItem(params.threadId);
 		return {
 			thread: thread,
-			messages: thread && thread.messages.map(function(messageId) {
-				var message = stores.Messages(messageId);
+			messages: thread.messages.map(function(messageId) {
+				var message = stores.Messages.getItem(messageId);
 				return message && Object.assign({}, message, {
-					user: stores.users(message.userId)
+					user: stores.Users.getItem(message.userId)
 				});
 			})
 		}

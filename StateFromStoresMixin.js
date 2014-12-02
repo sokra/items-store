@@ -6,20 +6,25 @@ var React = require("react");
 var ItemsStoreLease = require("./ItemsStoreLease");
 var ItemsStoreFetcher = require("./ItemsStoreFetcher");
 
-function makeStores(stores, getItem, getItemInfo) {
-	if(!getItem) {
-		getItem = function(Store, id) {
-			return Store.getItem(id);
-		};
-	}
-	if(!getItemInfo) {
-		getItemInfo = function(Store, id) {
-			return Store.getItemInfo(id);
-		};
+function makeStores(stores, addDepenency) {
+	if(!addDepenency) {
+		return stores;
 	}
 	return Object.keys(stores).reduce(function(obj, key) {
-		obj[key] = getItem.bind(null, stores[key]);
-		obj[key].info = getItemInfo.bind(null, stores[key]);
+		obj[key] = {
+			getItem: function(id) {
+				addDepenency(stores[key], id);
+				return stores[key].getItem(id);
+			},
+			getItemInfo: function(id) {
+				addDepenency(stores[key], id);
+				return stores[key].getItemInfo(id);
+			},
+			isItemAvailable: function(id) {
+				addDepenency(stores[key], id);
+				return stores[key].isItemAvailable(id);
+			},
+		};
 		return obj;
 	}, {});
 }
@@ -27,8 +32,8 @@ function makeStores(stores, getItem, getItemInfo) {
 module.exports = {
 	statics: {
 		chargeStores: function(stores, params, callback) {
-			ItemsStoreFetcher.fetch(function(getItem, getItemInfo) {
-				this.getState(makeStores(stores, getItem, getItemInfo), params);
+			ItemsStoreFetcher.fetch(function(addDepenency) {
+				this.getState(makeStores(stores, addDepenency), params);
 			}.bind(this), callback);
 		}
 	},
@@ -38,22 +43,22 @@ module.exports = {
 	getInitialState: function() {
 		var This = this.constructor;
 		if(!this.itemsStoreLease) this.itemsStoreLease = new ItemsStoreLease();
-		return Object.assign(this.itemsStoreLease.capture(function(getItem, getItemInfo) {
-			return This.getState(makeStores(this.context.stores, getItem, getItemInfo), this.getParams && this.getParams());
+		return Object.assign(this.itemsStoreLease.capture(function(addDepenency) {
+			return This.getState(makeStores(this.context.stores, addDepenency), this.getParams && this.getParams());
 		}.bind(this), this.StateFromStoresMixin_onUpdate),
 			this.getAdditionalInitialState && this.getAdditionalInitialState());
 	},
 	StateFromStoresMixin_onUpdate: function() {
 		var This = this.constructor;
-		this.setState(this.itemsStoreLease.capture(function(getItem, getItemInfo) {
-			return This.getState(makeStores(this.context.stores, getItem, getItemInfo), this.getParams && this.getParams());
+		this.setState(this.itemsStoreLease.capture(function(addDepenency) {
+			return This.getState(makeStores(this.context.stores, addDepenency), this.getParams && this.getParams());
 		}.bind(this), this.StateFromStoresMixin_onUpdate));
 	},
 	componentWillReceiveProps: function(newProps, newContext) {
 		if(!newContext) return;
 		var This = this.constructor;
-		this.setState(this.itemsStoreLease.capture(function(getItem, getItemInfo) {
-			return This.getState(makeStores(newContext.stores, getItem, getItemInfo), newContext.getCurrentParams && newContext.getCurrentParams());
+		this.setState(this.itemsStoreLease.capture(function(addDepenency) {
+			return This.getState(makeStores(newContext.stores, addDepenency), newContext.getCurrentParams && newContext.getCurrentParams());
 		}.bind(this), this.StateFromStoresMixin_onUpdate));
 	},
 	contextTypes: {

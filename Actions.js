@@ -12,6 +12,7 @@ Actions.create = function create(array) {
 		array.forEach(function(name) {
 			obj[name] = create();
 		});
+		return obj;
 	} else {
 		var ee = new EventEmitter();
 		var action = function() {
@@ -23,6 +24,6 @@ Actions.create = function create(array) {
 				callback.apply(bindContext, args);
 			});
 		};
+		return action;
 	}
-	return obj;
 };

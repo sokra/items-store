@@ -11,25 +11,16 @@ ItemsStoreFetcher.fetch = function(fn, callback) {
 		if(--unavailableItems === 0)
 			runFn();
 	}
-	function getItem(Store, id) {
-		if(Store.isItemAvailable(id)) {
-			return Store.getItem(id);
-		} else {
-			unavailableItems++;
-			Store.waitForItem(id, onItemAvailable);
-		}
-	}
-	function getItemInfo(Store, id) {
+	function listenTo(Store, id) {
 		if(!Store.isItemAvailable(id)) {
 			unavailableItems++;
 			Store.waitForItem(id, onItemAvailable);
 		}
-		return Store.getItemInfo(id);
 	}
 	function runFn() {
 		unavailableItems = 1;
 		try {
-			var ret = fn(getItem, getItemInfo);
+			var ret = fn(listenTo);
 		} catch(e) {
 			unavailableItems = NaN;
 			callback(e);

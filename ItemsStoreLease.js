@@ -23,17 +23,9 @@ ItemsStoreLease.prototype.capture = function(fn, onUpdate) {
 			newLeases.push(lease);
 		}
 	}
-	function getItem(Store, id) {
-		listenTo(Store, id);
-		return Store.getItem(id);
-	}
-	function getItemInfo(Store, id) {
-		listenTo(Store, id);
-		return Store.getItemInfo(id);
-	}
 	var error = null;
 	try {
-		var ret = fn(getItem, getItemInfo);
+		var ret = fn(listenTo);
 	} catch(e) {
 		error = e;
 	}
