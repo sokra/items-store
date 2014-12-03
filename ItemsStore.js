@@ -348,6 +348,9 @@ ItemsStore.prototype.setItemData = function(id, newData) {
 	item.data = newData;
 	item.outdated = false;
 	item.tick = this.updateTick;
+	var idx = this.invalidItems.indexOf(id);
+	if(idx >= 0)
+		this.invalidItems.splice(idx, 1);
 	if(item.handlers) {
 		var handlers = item.handlers.slice();
 		handlers.forEach(function(fn) {
