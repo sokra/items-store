@@ -111,7 +111,7 @@ ItemsStore.prototype.listenToItem = function(id, handler) {
 
 ItemsStore.prototype.waitForItem = function(id, callback) {
 	var onUpdate = function() {
-		if(!item.data && !item.outdated) return;
+		if(!item.data || item.outdated) return;
 		var idx = item.handlers.indexOf(onUpdate);
 		if(idx < 0) return;
 		item.handlers.splice(idx);
