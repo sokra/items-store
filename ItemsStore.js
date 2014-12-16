@@ -111,13 +111,13 @@ ItemsStore.prototype.listenToItem = function(id, handler) {
 
 ItemsStore.prototype.waitForItem = function(id, callback) {
 	var onUpdate = function() {
-		if(!item.data) return;
+		if(!item.data && !item.outdated) return;
 		var idx = item.handlers.indexOf(onUpdate);
 		if(idx < 0) return;
 		item.handlers.splice(idx);
 		item.leases.splice(idx);
 		callback();
-	}
+	};
 
 	var item = this.items["_" + id];
 	if(!item) {
@@ -348,13 +348,15 @@ ItemsStore.prototype.setItemData = function(id, newData) {
 	item.data = newData;
 	item.outdated = false;
 	item.tick = this.updateTick;
-	var idx = this.invalidItems.indexOf(id);
-	if(idx >= 0)
-		this.invalidItems.splice(idx, 1);
+	if(!item.update) {
+		var idx = this.invalidItems.indexOf(id);
+		if(idx >= 0)
+			this.invalidItems.splice(idx, 1);
+	}
 	if(item.handlers) {
 		var handlers = item.handlers.slice();
 		handlers.forEach(function(fn) {
-			fn(newData);
+			fn(item.newData || newData);
 		});
 	}
 };
