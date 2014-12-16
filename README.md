@@ -28,9 +28,9 @@ A helper class which leases multiple items from multiple stores. It captures dep
 
 A react component mixin that provides component state from stores.
 
-The component provides a **static** `getState` method that calculate state from states (and params when using react-router). The mixin handles listening to changes and charging stores.
+The component provides a **static** `getState` method that calculate state from stores (and params when using react-router). The mixin handles listening to changes and charging of stores.
 
-The usable API inside the `getState` method is very simple.
+The usable API inside the `getState` method is very simple and synchronous. See API > StateFromStoresMixin.
 
 
 ## API
@@ -55,7 +55,7 @@ The store description. The behavior of the store changes depending on the contai
 
 `readMultipleItems: function(items, callback)` Reads multiple items. Similar to `readSingleItem` but `items` is an array and the `callback` is a `function(err, newDatas: object)` where `newDatas` is an object containing items id as key (prefixed with any single char) and value is the new data. i. e. `{"_12345": { name: "item 12345" }}`.
 
-`writeSingleItem: function(item, callback)` Writes a single item. `item` is an object `{ id: string, update: any, oldData: any|undefined, newData: any|undefined }`. `callback` is a `function(err)`.
+`writeSingleItem: function(item, callback)` Writes a single item. `item` is an object `{ id: string, update: any, oldData: any|undefined, newData: any }`. `callback` is a `function(err)`.
 
 `writeMultipleItems: function(items, callback)` Writes multiple items. Similar to `writeSingleItem` but `items` is an array.
 
@@ -71,7 +71,7 @@ You need to provide at least one read method. If you want to do updates you need
 
 Reading or writing multiple items is preferred if more than one items should be read or written.
 
-writeAndRead methods are preferred of write methods.
+writeAndRead methods are preferred over write methods.
 
 **updates**
 
@@ -89,7 +89,9 @@ writeAndRead methods are preferred of write methods.
 
 **timing**
 
-`queueRequest: function(fn)` Called when the store want to do something. It's called with a async function `fn(callback)` that should be called sometime in the future. You should wait at least one tick before calling `fn` if you want multiple reads/writes to be merged. You can use a queue to queue from multiple stores.
+`queueRequest: function(fn)` Called when the store want to do something. It's called with a async function `fn(callback)` that should be called sometime in the future. You should wait at least one tick before calling `fn` if you want multiple reads/writes to be merged. You can use a shared queue to queue from multiple stores.
+
+Defaults to `process.nextTick`.
 
 #### `getItem(id)`
 
@@ -101,9 +103,9 @@ Returns status information about the item `id`. Returns an object with these key
 
 `available` Any data is available.
 
-`outdated` The item is outdated and a read is queued.
+`outdated` The item is outdated and a read is queued or will be queue when the item is read.
 
-`update` The item was changed and a write is queued.
+`updated` The item was changed and a write is queued.
 
 `listening` Somebody is interested in this item.
 
@@ -125,7 +127,7 @@ Calling this method may trigger a read to the item.
 
 #### `waitForItem(id, callback)`
 
-Waits until the item `id` is available and call the `callback` once it's available.
+Waits until the item `id` is up to date and calls the `callback` once it's up to date.
 
 Calling this method may trigger a read to the item.
 
@@ -198,12 +200,14 @@ This function should create the component state from `stores` and `params` and r
 	Messages: {
 		getItem: [Function],
 		getItemInfo: [Function],
-		isItemAvailable: [Function]
+		isItemAvailable: [Function],
+		isItemUpToDate: [Function]
 	},
 	Users: {
 		getItem: [Function],
 		getItemInfo: [Function],
-		isItemAvailable: [Function]
+		isItemAvailable: [Function],
+		isItemUpToDate: [Function]
 	}
 }
 ```
