@@ -24,6 +24,10 @@ function makeStores(stores, addDepenency) {
 				addDepenency(stores[key], id);
 				return stores[key].isItemAvailable(id);
 			},
+			isItemUpToDate: function(id) {
+				addDepenency(stores[key], id);
+				return stores[key].isItemUpToDate(id);
+			},
 		};
 		return obj;
 	}, {});

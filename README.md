@@ -111,6 +111,10 @@ Returns status information about the item `id`. Returns an object with these key
 
 Returns `true` if any data is available.
 
+#### `isItemUpToDate(id)`
+
+Returns `true` if data is available and not outdated.
+
 #### `listenToItem(id, handler)`
 
 Listen to changes of the item `id`. `handler` is called with the new data. A lease is returned which has a single method `close` which stops listening.

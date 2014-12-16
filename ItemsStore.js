@@ -100,7 +100,7 @@ ItemsStore.prototype.listenToItem = function(id, handler) {
 			item.handlers = [handler];
 			item.leases = [lease];
 		}
-		if(item.tick < this.updateTick && !item.outdated) {
+		if(item.tick !== this.updateTick && !item.outdated) {
 			item.outdated = true;
 			this.invalidateItem(id);
 		}
@@ -111,7 +111,7 @@ ItemsStore.prototype.listenToItem = function(id, handler) {
 
 ItemsStore.prototype.waitForItem = function(id, callback) {
 	var onUpdate = function() {
-		if(!item.data || item.outdated) return;
+		if(item.data === undefined || item.outdated) return;
 		var idx = item.handlers.indexOf(onUpdate);
 		if(idx < 0) return;
 		item.handlers.splice(idx);
@@ -128,7 +128,7 @@ ItemsStore.prototype.waitForItem = function(id, callback) {
 		};
 		this.invalidateItem(id);
 	} else {
-		if(item.data) {
+		if(item.data !== undefined && !item.outdated && item.tick === this.updateTick) {
 			callback();
 			return;
 		}
@@ -139,7 +139,7 @@ ItemsStore.prototype.waitForItem = function(id, callback) {
 			item.handlers = [onUpdate];
 			item.leases = [null];
 		}
-		if(!item.outdated && item.tick < this.updateTick) {
+		if(!item.outdated && item.tick !== this.updateTick) {
 			item.outdated = true;
 			this.invalidateItem(id);
 		}
@@ -149,12 +149,17 @@ ItemsStore.prototype.waitForItem = function(id, callback) {
 ItemsStore.prototype.getItem = function(id) {
 	var item = this.items["_" + id];
 	if(!item) return undefined;
-	return item.newData || item.data;
+	return item.newData !== undefined ? item.newData : item.data;
 };
 
 ItemsStore.prototype.isItemAvailable = function(id) {
 	var item = this.items["_" + id];
-	return !!(item && item.data);
+	return !!(item && item.data !== undefined);
+};
+
+ItemsStore.prototype.isItemUpToDate = function(id) {
+	var item = this.items["_" + id];
+	return !!(item && item.data !== undefined && !item.outdated && item.tick === this.updateTick);
 };
 
 ItemsStore.prototype.getItemInfo = function(id) {
@@ -166,9 +171,9 @@ ItemsStore.prototype.getItemInfo = function(id) {
 		listening: false
 	};
 	return {
-		available: !!item.data,
+		available: item.data !== undefined,
 		outdated: !!item.outdated,
-		updated: !!item.update,
+		updated: item.update !== undefined,
 		listening: !!item.handlers && item.handlers.length > 0
 	};
 };
@@ -180,17 +185,17 @@ ItemsStore.prototype.updateItem = function(id, update) {
 			update: update
 		};
 	} else {
-		if(item.data) {
-			item.newData = this.desc.applyUpdate(item.newData || item.data, update);
+		if(item.data !== undefined) {
+			item.newData = this.desc.applyUpdate(item.newData !== undefined ? item.newData : item.data, update);
 		}
-		if(item.update) {
+		if(item.update !== undefined) {
 			item.update = this.desc.mergeUpdates(item.update, update);
 		} else {
 			item.update = update;
 		}
 	}
 	this.invalidateItem(id);
-	if(item.data && item.handlers) {
+	if(item.data !== undefined && item.handlers) {
 		var handlers = item.handlers.slice();
 		handlers.forEach(function(fn) {
 			fn(item.newData);
@@ -237,7 +242,7 @@ ItemsStore.prototype._requestWriteAndReadSingleItem = function(item, callback) {
 		if(err) {
 			// TODO handle error
 		}
-		if(newData) {
+		if(newData !== undefined) {
 			this.setItemData(item.id, newData);
 		}
 		this._request(callback);
@@ -272,7 +277,7 @@ ItemsStore.prototype._requestReadSingleItem = function(item, callback) {
 		if(err) {
 			// TODO handle error
 		}
-		if(newData) {
+		if(newData !== undefined) {
 			this.setItemData(item.id, newData);
 		}
 		this._request(callback);
@@ -338,17 +343,20 @@ ItemsStore.prototype._request = function(callback) {
 ItemsStore.prototype.setItemData = function(id, newData) {
 	var item = this.items["_" + id];
 	if(!item) {
-		this.items["_" + id] = { data: newData };
+		this.items["_" + id] = {
+			data: newData,
+			tick: this.updateTick
+		};
 		return;
 	}
-	if(item.newData) {
+	if(item.newData !== undefined) {
 		item.update = this.desc.rebaseUpdate(item.update, item.data, newData);
 		item.newData = this.desc.applyUpdate(newData, item.update);
 	}
 	item.data = newData;
 	item.outdated = false;
 	item.tick = this.updateTick;
-	if(!item.update) {
+	if(item.update === undefined) {
 		var idx = this.invalidItems.indexOf(id);
 		if(idx >= 0)
 			this.invalidItems.splice(idx, 1);
@@ -356,7 +364,7 @@ ItemsStore.prototype.setItemData = function(id, newData) {
 	if(item.handlers) {
 		var handlers = item.handlers.slice();
 		handlers.forEach(function(fn) {
-			fn(item.newData || newData);
+			fn(item.newData !== undefined ? item.newData : newData);
 		});
 	}
 };

@@ -12,7 +12,7 @@ ItemsStoreFetcher.fetch = function(fn, callback) {
 			runFn();
 	}
 	function listenTo(Store, id) {
-		if(!Store.isItemAvailable(id)) {
+		if(!Store.isItemUpToDate(id)) {
 			unavailableItems++;
 			Store.waitForItem(id, onItemAvailable);
 		}
