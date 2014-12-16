@@ -114,8 +114,8 @@ ItemsStore.prototype.waitForItem = function(id, callback) {
 		if(item.data === undefined || item.outdated) return;
 		var idx = item.handlers.indexOf(onUpdate);
 		if(idx < 0) return;
-		item.handlers.splice(idx);
-		item.leases.splice(idx);
+		item.handlers.splice(idx, 1);
+		item.leases.splice(idx, 1);
 		callback();
 	};
 
@@ -172,7 +172,7 @@ ItemsStore.prototype.getItemInfo = function(id) {
 	};
 	return {
 		available: item.data !== undefined,
-		outdated: !!item.outdated,
+		outdated: !(!item.outdated && item.tick === this.updateTick),
 		updated: item.update !== undefined,
 		listening: !!item.handlers && item.handlers.length > 0
 	};
