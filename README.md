@@ -59,9 +59,19 @@ The store description. The behavior of the store changes depending on the contai
 
 `writeMultipleItems: function(items, callback)` Writes multiple items. Similar to `writeSingleItem` but `items` is an array.
 
+`createSingleItem: function(item, callback)` Creates a single item. `item` is an object `{ data: any }`. `callback` is a `function(err, newId)`.
+
+`createMultipleItems: function(items, callback)` Creates multiple items. Similar to `createSingleItem` but `items` is an array.
+
 `writeAndReadSingleItem: function(item, callback)` A combination of `writeSingleItem` followed by a `readSingleItem`.
 
 `writeAndReadMultipleItems: function(items, callback)` A combination of `writeMultipleItems` followed by a `readMultipleItems`.
+
+`createAndReadSingleItem: function(items, callback)` A combination of `createSingleItem` followed by a `readSingleItem`. `callback` is `function(err, newId, newData)`.
+
+`createAndReadMultipleItems: function(items, callback)` A combination of `createMultipleItems` followed by a `readMultipleItems`. `callback` is `function(err, newIds: array, newDatas: object)`.
+
+`maxCreateItems` Maximum of items allowed to be created by `createMultipleItems` or `createAndReadMultipleItems`.
 
 `maxWriteItems` Maximum of items allowed to be written by `writeMultipleItems` or `writeAndReadMultipleItems`.
 
@@ -72,6 +82,8 @@ You need to provide at least one read method. If you want to do updates you need
 Reading or writing multiple items is preferred if more than one items should be read or written.
 
 writeAndRead methods are preferred over write methods.
+
+If multiple requests are scheduled they are processed in this order: 1. create, 2. write, 3. read.
 
 **updates**
 

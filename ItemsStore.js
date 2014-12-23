@@ -15,6 +15,7 @@ function ItemsStore(desc, initialData) {
 		};
 		return obj;
 	}, {}) : {};
+	this.createableItems = [];
 	this.requesting = false;
 	this.invalidItems = [];
 	this.updateTick = 0;
@@ -204,14 +205,29 @@ ItemsStore.prototype.updateItem = function(id, update) {
 
 };
 
+ItemsStore.prototype.createItem = function(data, handler) {
+	this.createableItems.push({
+		data: data,
+		handler: handler
+	});
+	if(!this.requesting) {
+		this.requesting = true;
+		this._queueRequest();
+	}
+};
+
 ItemsStore.prototype.invalidateItem = function(id) {
 	if(this.invalidItems.indexOf(id) >= 0)
 		return;
 	this.invalidItems.push(id);
 	if(!this.requesting) {
 		this.requesting = true;
-		this.desc.queueRequest(this._request.bind(this));
+		this._queueRequest();
 	}
+};
+
+ItemsStore.prototype._queueRequest = function() {
+	this.desc.queueRequest(this._request.bind(this));
 };
 
 ItemsStore.prototype._requestWriteAndReadMultipleItems = function(items, callback) {
@@ -224,7 +240,8 @@ ItemsStore.prototype._requestWriteAndReadMultipleItems = function(items, callbac
 				this.setItemData(id.substr(1), newDatas[id]);
 			}, this);
 		}
-		this._request(callback);
+		this._queueRequest();
+		callback();
 	}.bind(this));
 };
 
@@ -233,7 +250,8 @@ ItemsStore.prototype._requestWriteMultipleItems = function(items, callback) {
 		if(err) {
 			// TODO handle error
 		}
-		this._request(callback);
+		this._queueRequest();
+		callback();
 	}.bind(this));
 };
 
@@ -245,7 +263,8 @@ ItemsStore.prototype._requestWriteAndReadSingleItem = function(item, callback) {
 		if(newData !== undefined) {
 			this.setItemData(item.id, newData);
 		}
-		this._request(callback);
+		this._queueRequest();
+		callback();
 	}.bind(this));
 };
 
@@ -254,7 +273,8 @@ ItemsStore.prototype._requestWriteSingleItem = function(item, callback) {
 		if(err) {
 			// TODO handle error
 		}
-		this._request(callback);
+		this._queueRequest();
+		callback();
 	}.bind(this));
 };
 
@@ -268,7 +288,8 @@ ItemsStore.prototype._requestReadMultipleItems = function(items, callback) {
 				this.setItemData(id.substr(1), newDatas[id]);
 			}, this);
 		}
-		this._request(callback);
+		this._queueRequest();
+		callback();
 	}.bind(this));
 };
 
@@ -280,11 +301,96 @@ ItemsStore.prototype._requestReadSingleItem = function(item, callback) {
 		if(newData !== undefined) {
 			this.setItemData(item.id, newData);
 		}
-		this._request(callback);
+		this._queueRequest();
+		callback();
+	}.bind(this));
+};
+
+ItemsStore.prototype._requestCreateSingleItem = function(item, callback) {
+	this.desc.createSingleItem(item, function(err, id) {
+		if(item.handler) item.handler(err, id);
+		this._queueRequest();
+		callback();
+	}.bind(this));
+};
+
+ItemsStore.prototype._requestCreateMultipleItems = function(items, callback) {
+	this.desc.createMultipleItems(items, function(err, ids) {
+		for(var i = 0; i < items.length; i++) {
+			if(items[i].handler) {
+				items[i].handler(err, ids && ids[i]);
+			}
+		}
+		this._queueRequest();
+		callback();
+	}.bind(this));
+};
+
+ItemsStore.prototype._requestCreateAndReadSingleItem = function(item, callback) {
+	this.desc.createAndReadSingleItem(item, function(err, id, newData) {
+		if(!err && newData !== undefined) {
+			this.setItemData(id, newData);
+		}
+		if(item.handler) item.handler(err, id, newData);
+		this._queueRequest();
+		callback();
+	}.bind(this));
+};
+
+ItemsStore.prototype._requestCreateAndReadMultipleItems = function(items, callback) {
+	this.desc.createAndReadMultipleItems(items, function(err, ids, newDatas) {
+		if(newDatas) {
+			Object.keys(newDatas).forEach(function(id) {
+				this.setItemData(id.substr(1), newDatas[id]);
+			}, this);
+		}
+		for(var i = 0; i < items.length; i++) {
+			if(items[i].handler) {
+				items[i].handler(err, ids && ids[i], ids && newDatas && newDatas[ids[i]]);
+			}
+		}
+		this._queueRequest();
+		callback();
 	}.bind(this));
 };
 
 ItemsStore.prototype._request = function(callback) {
+	if(this.desc.createAndReadMultipleItems) {
+		var items = this._popCreateableItem(true);
+		if(items.length === 1 && this.desc.createAndReadSingleItem) {
+			this._requestCreateAndReadSingleItem(items[0], callback);
+			return;
+		} else if(items.length > 0) {
+			this._requestCreateAndReadMultipleItems(items, callback);
+			return;
+		}
+	}
+	if(this.desc.createMultipleItems) {
+		var items = this._popCreateableItem(true);
+		if(items.length === 1 && this.desc.createSingleItem) {
+			if(!this.desc.createAndReadSingleItem) {
+				this._requestCreateSingleItem(items[0], callback);
+				return;
+			}
+		} else if(items.length > 0) {
+			this._requestCreateMultipleItems(items, callback);
+			return;
+		}
+	}
+	if(this.desc.createAndReadSingleItem) {
+		var item = this._popCreateableItem(false);
+		if(item) {
+			this._requestCreateAndReadSingleItem(item, callback);
+			return;
+		}
+	}
+	if(this.desc.createSingleItem) {
+		var item = this._popCreateableItem(false);
+		if(item) {
+			this._requestCreateSingleItem(item, callback);
+			return;
+		}
+	}
 	if(this.desc.writeAndReadMultipleItems) {
 		var items = this._popWriteableItem(true, true);
 		if(items.length === 1 && this.desc.writeAndReadSingleItem) {
@@ -298,8 +404,10 @@ ItemsStore.prototype._request = function(callback) {
 	if(this.desc.writeMultipleItems) {
 		var items = this._popWriteableItem(true, false);
 		if(items.length === 1 && this.desc.writeSingleItem) {
-			this._requestWriteSingleItem(items[0], callback);
-			return;
+			if(!this.desc.writeAndReadSingleItem) {
+				this._requestWriteSingleItem(items[0], callback);
+				return;
+			}
 		} else if(items.length > 0) {
 			this._requestWriteMultipleItems(items, callback);
 			return;
@@ -366,6 +474,20 @@ ItemsStore.prototype.setItemData = function(id, newData) {
 		handlers.forEach(function(fn) {
 			fn(item.newData !== undefined ? item.newData : newData);
 		});
+	}
+};
+
+ItemsStore.prototype._popCreateableItem = function(multiple) {
+	if(multiple) {
+		if(this.maxCreateItems && this.maxCreateItems < this.createableItems.length) {
+			return this.createableItems.splice(0, this.maxCreateItems);
+		} else {
+			var items = this.createableItems;
+			this.createableItems = [];
+			return items;
+		}
+	} else {
+		return this.createableItems.shift();
 	}
 };
 
