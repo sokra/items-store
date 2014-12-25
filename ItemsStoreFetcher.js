@@ -2,6 +2,7 @@
 	MIT License http://www.opensource.org/licenses/mit-license.php
 	Author Tobias Koppers @sokra
 */
+var ItemsStoreFetcher;
 module.exports = ItemsStoreFetcher = exports;
 
 ItemsStoreFetcher.fetch = function(fn, callback) {
