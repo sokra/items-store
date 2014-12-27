@@ -355,6 +355,7 @@ ItemsStore.prototype._requestCreateAndReadMultipleItems = function(items, callba
 };
 
 ItemsStore.prototype._request = function(callback) {
+	callback = callback || function () {};
 	if(this.desc.createAndReadMultipleItems) {
 		var items = this._popCreateableItem(true);
 		if(items.length === 1 && this.desc.createAndReadSingleItem) {
