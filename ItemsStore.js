@@ -446,7 +446,7 @@ ItemsStore.prototype._request = function(callback) {
 		}
 	}
 	this.requesting = false;
-	if(callback) callback();
+	callback();
 };
 
 ItemsStore.prototype.setItemData = function(id, newData) {
