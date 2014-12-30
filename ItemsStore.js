@@ -16,6 +16,7 @@ function ItemsStore(desc, initialData) {
 		return obj;
 	}, {}) : {};
 	this.createableItems = [];
+	this.deletableItems = [];
 	this.requesting = false;
 	this.invalidItems = [];
 	this.updateTick = 0;
@@ -55,17 +56,36 @@ ItemsStore.prototype.getData = function() {
 		return data;
 };
 
-ItemsStore.prototype.update = function() {
-	this.updateTick++;
-	Object.keys(this.items).forEach(function(key) {
-		var id = key.substr(1);
-		var item = this.items[key];
+ItemsStore.prototype.outdate = function(id) {
+	if(typeof id === "string") {
+		var item = this.items["_" + id];
 		if(!item) return;
-		if(!item.outdated && item.handlers && item.handlers.length > 0) {
+		item.tick = null;
+	} else {
+		this.updateTick++;
+	}
+};
+
+ItemsStore.prototype.update = function(allOrId) {
+	if(typeof allOrId === "string") {
+		var item = this.items["_" + id];
+		if(!item) return;
+		if(!item.outdated) {
 			item.outdated = true;
 			this.invalidateItem(id);
 		}
-	}, this);
+	} else {
+		this.updateTick++;
+		Object.keys(this.items).forEach(function(key) {
+			var id = key.substr(1);
+			var item = this.items[key];
+			if(!item) return;
+			if(!item.outdated && (allOrId || (item.handlers && item.handlers.length > 0))) {
+				item.outdated = true;
+				this.invalidateItem(id);
+			}
+		}, this);
+	}
 };
 
 ItemsStore.prototype.listenToItem = function(id, handler) {
@@ -216,6 +236,17 @@ ItemsStore.prototype.createItem = function(data, handler) {
 	}
 };
 
+ItemsStore.prototype.deleteItem = function(id, handler) {
+	this.deletableItems.push({
+		id: id,
+		handler: handler
+	});
+	if(!this.requesting) {
+		this.requesting = true;
+		this._queueRequest();
+	}
+};
+
 ItemsStore.prototype.invalidateItem = function(id) {
 	if(this.invalidItems.indexOf(id) >= 0)
 		return;
@@ -354,6 +385,32 @@ ItemsStore.prototype._requestCreateAndReadMultipleItems = function(items, callba
 	}.bind(this));
 };
 
+ItemsStore.prototype._requestDeleteSingleItem = function(item, callback) {
+	this.desc.deleteSingleItem(item, function(err) {
+		if(item.handler) item.handler(err);
+		if(!err) {
+			delete this.items["_" + item.id];
+		}
+		this._queueRequest();
+		callback();
+	}.bind(this));
+};
+
+ItemsStore.prototype._requestDeleteMultipleItems = function(items, callback) {
+	this.desc.deleteMultipleItems(items, function(err) {
+		for(var i = 0; i < items.length; i++) {
+			if(items[i].handler) {
+				items[i].handler(err);
+			}
+			if(!err) {
+				delete this.items["_" + items[i].id];
+			}
+		}
+		this._queueRequest();
+		callback();
+	}.bind(this));
+};
+
 ItemsStore.prototype._request = function(callback) {
 	callback = callback || function () {};
 	if(this.desc.createAndReadMultipleItems) {
@@ -428,6 +485,23 @@ ItemsStore.prototype._request = function(callback) {
 			return;
 		}
 	}
+	if(this.desc.deleteMultipleItems) {
+		var items = this._popDeleteableItem(true);
+		if(items.length === 1 && this.desc.deleteSingleItem) {
+			this._requestDeleteSingleItem(items[0], callback);
+			return;
+		} else if(items.length > 0) {
+			this._requestDeleteMultipleItems(items, callback);
+			return;
+		}
+	}
+	if(this.desc.deleteSingleItem) {
+		var item = this._popDeleteableItem(false);
+		if(item) {
+			this._requestDeleteSingleItem(item, callback);
+			return;
+		}
+	}
 	if(this.desc.readMultipleItems) {
 		var items = this._popReadableItem(true);
 		if(items.length === 1 && this.desc.readSingleItem) {
@@ -489,6 +563,20 @@ ItemsStore.prototype._popCreateableItem = function(multiple) {
 		}
 	} else {
 		return this.createableItems.shift();
+	}
+};
+
+ItemsStore.prototype._popDeleteableItem = function(multiple) {
+	if(multiple) {
+		if(this.maxDeleteItems && this.maxDeleteItems < this.deletableItems.length) {
+			return this.deletableItems.splice(0, this.maxDeleteItems);
+		} else {
+			var items = this.deletableItems;
+			this.deletableItems = [];
+			return items;
+		}
+	} else {
+		return this.deletableItems.shift();
 	}
 };
 

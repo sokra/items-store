@@ -63,6 +63,10 @@ The store description. The behavior of the store changes depending on the contai
 
 `createMultipleItems: function(items, callback)` Creates multiple items. Similar to `createSingleItem` but `items` is an array.
 
+`deleteSingleItem: function(item, callback)` Deletes a single item. `item` is an object `{ id: string }`. `callback` is a `function(err)`.
+
+`deleteMultipleItems: function(items, callback)` Deletes multiple items. Similar to `deleteSingleItem` but `items` is an array.
+
 `writeAndReadSingleItem: function(item, callback)` A combination of `writeSingleItem` followed by a `readSingleItem`.
 
 `writeAndReadMultipleItems: function(items, callback)` A combination of `writeMultipleItems` followed by a `readMultipleItems`.
@@ -75,6 +79,8 @@ The store description. The behavior of the store changes depending on the contai
 
 `maxWriteItems` Maximum of items allowed to be written by `writeMultipleItems` or `writeAndReadMultipleItems`.
 
+`maxDeleteItems` Maximum of items allowed to be delete by `deleteMultipleItems`.
+
 `maxReadItems` Maximum of items allowed to be read by `readMultipleItems`.
 
 You need to provide at least one read method. If you want to do updates you need to provide at least one write or writeAndRead method.
@@ -83,7 +89,7 @@ Reading or writing multiple items is preferred if more than one items should be 
 
 writeAndRead methods are preferred over write methods.
 
-If multiple requests are scheduled they are processed in this order: 1. create, 2. write, 3. read.
+If multiple requests are scheduled they are processed in this order: 1. create, 2. write, 3. delete, 3. read.
 
 **updates**
 
@@ -153,9 +159,32 @@ Applies the `update` to item `id`. The format of `update` depends on the provide
 
 Calling this method trigger a write to the item.
 
-#### `update()`
+#### `createItem(data, [callback])
 
-Defines all available items as outdated and triggers reads.
+Triggers a server request to create a new item. `callback` is called with the server response.
+
+#### `deleteItem(id, [callback])
+
+Triggers a server request to delete an item. `callback` is called with the server response.
+
+#### `outdate()`
+
+Defines all available items as outdated.
+
+#### `outdate(id)`
+
+Defines item `id` as outdated.
+
+#### `update([all])`
+
+Defines all available items as outdated and
+
+* `all = false` (default): triggers reads for items which are listened.
+* `all = true`: triggers reads for all items
+
+#### `update(id)`
+
+Defines item `id` as outdated and triggers a read.
 
 #### `setItemData(id, newData)`
 
