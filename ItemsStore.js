@@ -68,6 +68,7 @@ ItemsStore.prototype.outdate = function(id) {
 
 ItemsStore.prototype.update = function(allOrId) {
 	if(typeof allOrId === "string") {
+		var id = allOrId;
 		var item = this.items["_" + id];
 		if(!item) return;
 		if(!item.outdated) {
