@@ -5,6 +5,7 @@
 var React = require("react");
 var ItemsStoreLease = require("./ItemsStoreLease");
 var ItemsStoreFetcher = require("./ItemsStoreFetcher");
+var ReactUpdates = require("react/lib/ReactUpdates");
 
 function makeStores(stores, addDepenency) {
 	if(!addDepenency) {
@@ -47,12 +48,19 @@ module.exports = {
 	getInitialState: function() {
 		var This = this.constructor;
 		if(!this.itemsStoreLease) this.itemsStoreLease = new ItemsStoreLease();
-		return Object.assign(this.itemsStoreLease.capture(function(addDepenency) {
+		return this.itemsStoreLease.capture(function(addDepenency) {
 			return This.getState(makeStores(this.context.stores, addDepenency), this.getParams && this.getParams());
-		}.bind(this), this.StateFromStoresMixin_onUpdate),
-			this.getAdditionalInitialState && this.getAdditionalInitialState());
+		}.bind(this), this.StateFromStoresMixin_onUpdate);
 	},
 	StateFromStoresMixin_onUpdate: function() {
+		if(this.StateFromStoresMixin_updateScheduled)
+			return;
+		this.StateFromStoresMixin_updateScheduled = true;
+		ReactUpdates.asap(this.StateFromStoresMixin_doUpdate);
+	},
+	StateFromStoresMixin_doUpdate: function() {
+		this.StateFromStoresMixin_updateScheduled = false;
+		if(!this.isMounted()) return;
 		var This = this.constructor;
 		this.setState(this.itemsStoreLease.capture(function(addDepenency) {
 			return This.getState(makeStores(this.context.stores, addDepenency), this.getParams && this.getParams());

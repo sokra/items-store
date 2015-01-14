@@ -225,9 +225,11 @@ Stops listening to item updates.
 
 Mixin for react component.
 
+It uses update batching of react, so you **must** ensure that all calls to `ItemsStore.setItemData` and callbacks of `read...` are inside the react event system, batched with `ReactUpdates.batchedUpdates` or use a continuous batching strategy (i. e. `ReactRAFBatchingStrategy`).
+
 **component**
 
-It's expected from the component to provide a static `getState` function. It can optionally provide a `getAdditionalInitialState` instance method.
+It's expected from the component to provide a static `getState` function.
 
 The context of the component must contain a key `stores` which is an object containing all stores (i. e. `{Messages: [ItemsStore], Users: [ItemsStore]}`).
 
@@ -275,10 +277,6 @@ statics: {
 	}
 }
 ```
-
-#### `getAdditionalInitialState()`
-
-Returns initial state that is merged with the initial state provided from the static `getState` method.
 
 **hooks**
 
