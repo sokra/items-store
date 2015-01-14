@@ -537,6 +537,7 @@ ItemsStore.prototype.setItemData = function(id, newData) {
 		item.update = this.desc.rebaseUpdate(item.update, item.data, newData);
 		item.newData = this.desc.applyUpdate(newData, item.update);
 	}
+	var oldData = item.data;
 	item.data = newData;
 	item.outdated = false;
 	item.tick = this.updateTick;
@@ -545,7 +546,7 @@ ItemsStore.prototype.setItemData = function(id, newData) {
 		if(idx >= 0)
 			this.invalidItems.splice(idx, 1);
 	}
-	if(item.handlers) {
+	if(item.handlers && oldData !== newData) {
 		var handlers = item.handlers.slice();
 		handlers.forEach(function(fn) {
 			fn(item.newData !== undefined ? item.newData : newData);
