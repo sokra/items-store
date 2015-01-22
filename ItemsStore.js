@@ -6,6 +6,7 @@ function ItemsStore(desc, initialData) {
 	desc.applyUpdate = desc.applyUpdate || applyUpdate;
 	desc.mergeUpdates = desc.mergeUpdates || mergeUpdates;
 	desc.rebaseUpdate = desc.rebaseUpdate || rebaseUpdate;
+	desc.applyNewData = desc.applyNewData || applyNewData;
 	desc.queueRequest = desc.queueRequest || process.nextTick.bind(process);
 	this.desc = desc;
 	this.items = initialData ? Object.keys(initialData).reduce(function(obj, key) {
@@ -528,11 +529,12 @@ ItemsStore.prototype.setItemData = function(id, newData) {
 	var item = this.items["_" + id];
 	if(!item) {
 		this.items["_" + id] = {
-			data: newData,
+			data: this.desc.applyNewData(undefined, newData),
 			tick: this.updateTick
 		};
 		return;
 	}
+	newData = this.desc.applyNewData(item.data, newData);
 	if(item.newData !== undefined) {
 		item.update = this.desc.rebaseUpdate(item.update, item.data, newData);
 		item.newData = this.desc.applyUpdate(newData, item.update);
@@ -647,4 +649,8 @@ function mergeUpdates(a, b) {
 
 function rebaseUpdate(update, oldData, newData) {
 	return update;
+}
+
+function applyNewData(oldData, newData) {
+	return newData;
 }

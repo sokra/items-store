@@ -105,6 +105,10 @@ If multiple requests are scheduled they are processed in this order: 1. create, 
 
 `rebaseUpdate` default to an identity function that just returns `update`.
 
+`applyNewData: function(oldData, newData)` Apply new data (from `ItemsStore.setItemData`) to old data. The new data for the items is returned. Usually the function doesn't modify `oldData`, but this is not required by items-store (but react requires immutable props and state). A possible optimization is to return the `oldData` object when it is equal to `newData` (and do the same for nested objects).
+
+`applyNewData` defaults to an identity function that just returns `newData`.
+
 **timing**
 
 `queueRequest: function(fn)` Called when the store want to do something. It's called with a async function `fn(callback)` that should be called sometime in the future. You should wait at least one tick before calling `fn` if you want multiple reads/writes to be merged. You can use a shared queue to queue from multiple stores.
