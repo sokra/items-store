@@ -1,6 +1,8 @@
 # items-store
 
-A flux-like architecture with a syncing items store.
+A simple flux-like architecture with a syncing items store.
+
+![architecture](https://raw.githubusercontent.com/webpack/items-store/master/img/architecture.png)
 
 ## Idea
 
@@ -14,7 +16,7 @@ It
 * caches items after reading
 * fires update events for items
 * merges multiple writes to items
-* writes do optimistic updates
+* let writes do optimistic updates
 
 ### ItemsStoreFetcher
 
@@ -24,7 +26,7 @@ A helper which repeatedly calls a function until all references items are availa
 
 A helper class which leases multiple items from multiple stores. It captures dependencies from calling a function.
 
-## StateFromStoresMixin
+### StateFromStoresMixin
 
 A react component mixin that provides component state from stores.
 
