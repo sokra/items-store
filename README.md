@@ -2,7 +2,7 @@
 
 A simple flux-like architecture with a syncing items store.
 
-![architecture](https://raw.githubusercontent.com/webpack/items-store/master/img/architecture.svg)
+![architecture](https://raw.githubusercontent.com/webpack/items-store/master/img/architecture.png)
 
 ## Idea
 
