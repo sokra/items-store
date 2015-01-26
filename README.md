@@ -169,11 +169,11 @@ Applies the `update` to item `id`. The format of `update` depends on the provide
 
 Calling this method trigger a write to the item.
 
-#### `createItem(data, [callback])
+#### `createItem(data, [callback])`
 
 Triggers a server request to create a new item. `callback` is called with the server response.
 
-#### `deleteItem(id, [callback])
+#### `deleteItem(id, [callback])`
 
 Triggers a server request to delete an item. `callback` is called with the server response.
 
