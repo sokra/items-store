@@ -3,10 +3,13 @@
 	Author Tobias Koppers @sokra
 */
 function ItemsStore(desc, initialData) {
+	if(!desc || typeof desc !== "object")
+		throw new Error("Invalid argument: desc must be an object");
 	desc.applyUpdate = desc.applyUpdate || applyUpdate;
 	desc.mergeUpdates = desc.mergeUpdates || mergeUpdates;
 	desc.rebaseUpdate = desc.rebaseUpdate || rebaseUpdate;
 	desc.applyNewData = desc.applyNewData || applyNewData;
+	desc.applyNewError = desc.applyNewError || applyNewError;
 	desc.queueRequest = desc.queueRequest || process.nextTick.bind(process);
 	this.desc = desc;
 	this.items = initialData ? Object.keys(initialData).reduce(function(obj, key) {
@@ -21,6 +24,12 @@ function ItemsStore(desc, initialData) {
 	this.requesting = false;
 	this.invalidItems = [];
 	this.updateTick = 0;
+	this.supportCreate = desc.createSingleItem || desc.createMultipleItems ||
+		desc.createAndReadSingleItem || desc.createAndReadMultipleItems;
+	this.supportDelete = desc.deleteSingleItem || desc.deleteMultipleItems;
+	this.supportWrite = desc.writeSingleItem || desc.writeMultipleItems ||
+		desc.writeAndReadSingleItem || desc.writeAndReadMultipleItems;
+	this.supportRead = desc.readSingleItem || desc.readMultipleItems;
 }
 
 module.exports = ItemsStore;
@@ -43,6 +52,18 @@ item = { update: {} }
 no item data available and it should be updated with the "update"
 
 */
+
+ItemsStore.prototype._createItem = function() {
+	return {
+		data: undefined,
+		update: undefined,
+		newData: undefined,
+		error: undefined,
+		outdated: undefined,
+		tick: undefined,
+		handlers: undefined
+	};
+}
 
 ItemsStore.prototype.getData = function() {
 	var data = {};
@@ -105,11 +126,11 @@ ItemsStore.prototype.listenToItem = function(id, handler) {
 	};
 	var item = this.items["_" + id];
 	if(!item) {
-		this.items["_" + id] = {
-			handlers: [handler],
-			leases: [lease],
-			outdated: true
-		};
+		item = this._createItem();
+		item.handlers = [handler];
+		item.leases = [lease];
+		item.outdated = true;
+		this.items["_" + id] = item;
 		this.invalidateItem(id);
 	} else {
 		if(item.handlers) {
@@ -144,11 +165,11 @@ ItemsStore.prototype.waitForItem = function(id, callback) {
 
 	var item = this.items["_" + id];
 	if(!item) {
-		item = this.items["_" + id] = {
-			handlers: [onUpdate],
-			leases: [null],
-			outdated: true
-		};
+		item = this._createItem();
+		item.handlers = [onUpdate];
+		item.leases = [null];
+		item.outdated = true;
+		this.items["_" + id] = item;
 		this.invalidateItem(id);
 	} else {
 		if(item.data !== undefined && !item.outdated && item.tick === this.updateTick) {
@@ -191,22 +212,26 @@ ItemsStore.prototype.getItemInfo = function(id) {
 		available: false,
 		outdated: false,
 		updated: false,
-		listening: false
+		listening: false,
+		error: undefined
 	};
 	return {
 		available: item.data !== undefined,
 		outdated: !(!item.outdated && item.tick === this.updateTick),
 		updated: item.update !== undefined,
-		listening: !!item.handlers && item.handlers.length > 0
+		listening: !!item.handlers && item.handlers.length > 0,
+		error: item.error
 	};
 };
 
 ItemsStore.prototype.updateItem = function(id, update) {
+	if(!this.supportWrite)
+		throw new Error("Store doesn't support updating of items");
 	var item = this.items["_" + id];
 	if(!item) {
-		this.items["_" + id] = item = {
-			update: update
-		};
+		item = this._createItem();
+		item.update = update;
+		this.items["_" + id] = item;
 	} else {
 		if(item.data !== undefined) {
 			item.newData = this.desc.applyUpdate(item.newData !== undefined ? item.newData : item.data, update);
@@ -228,6 +253,8 @@ ItemsStore.prototype.updateItem = function(id, update) {
 };
 
 ItemsStore.prototype.createItem = function(data, handler) {
+	if(!this.supportCreate)
+		throw new Error("Store doesn't support creating of items");
 	this.createableItems.push({
 		data: data,
 		handler: handler
@@ -239,6 +266,8 @@ ItemsStore.prototype.createItem = function(data, handler) {
 };
 
 ItemsStore.prototype.deleteItem = function(id, handler) {
+	if(!this.supportDelete)
+		throw new Error("Store doesn't support deleting of items");
 	this.deletableItems.push({
 		id: id,
 		handler: handler
@@ -252,6 +281,8 @@ ItemsStore.prototype.deleteItem = function(id, handler) {
 ItemsStore.prototype.invalidateItem = function(id) {
 	if(this.invalidItems.indexOf(id) >= 0)
 		return;
+	if(!this.supportRead)
+		throw new Error("Store doesn't support reading of items");
 	this.invalidItems.push(id);
 	if(!this.requesting) {
 		this.requesting = true;
@@ -266,7 +297,9 @@ ItemsStore.prototype._queueRequest = function() {
 ItemsStore.prototype._requestWriteAndReadMultipleItems = function(items, callback) {
 	this.desc.writeAndReadMultipleItems(items, function(err, newDatas) {
 		if(err) {
-			// TODO handle error
+			items.forEach(function(item) {
+				this.setItemError(item.id, err);
+			}, this);
 		}
 		if(newDatas) {
 			Object.keys(newDatas).forEach(function(id) {
@@ -281,7 +314,9 @@ ItemsStore.prototype._requestWriteAndReadMultipleItems = function(items, callbac
 ItemsStore.prototype._requestWriteMultipleItems = function(items, callback) {
 	this.desc.writeMultipleItems(items, function(err) {
 		if(err) {
-			// TODO handle error
+			items.forEach(function(item) {
+				this.setItemError(item.id, err);
+			}, this);
 		}
 		this._queueRequest();
 		callback();
@@ -291,7 +326,7 @@ ItemsStore.prototype._requestWriteMultipleItems = function(items, callback) {
 ItemsStore.prototype._requestWriteAndReadSingleItem = function(item, callback) {
 	this.desc.writeAndReadSingleItem(item, function(err, newData) {
 		if(err) {
-			// TODO handle error
+			this.setItemError(item.id, err);
 		}
 		if(newData !== undefined) {
 			this.setItemData(item.id, newData);
@@ -304,7 +339,7 @@ ItemsStore.prototype._requestWriteAndReadSingleItem = function(item, callback) {
 ItemsStore.prototype._requestWriteSingleItem = function(item, callback) {
 	this.desc.writeSingleItem(item, function(err) {
 		if(err) {
-			// TODO handle error
+			this.setItemError(item.id, err);
 		}
 		this._queueRequest();
 		callback();
@@ -314,7 +349,9 @@ ItemsStore.prototype._requestWriteSingleItem = function(item, callback) {
 ItemsStore.prototype._requestReadMultipleItems = function(items, callback) {
 	this.desc.readMultipleItems(items, function(err, newDatas) {
 		if(err) {
-			// TODO handle error
+			items.forEach(function(item) {
+				this.setItemError(item.id, err);
+			}, this);
 		}
 		if(newDatas) {
 			Object.keys(newDatas).forEach(function(id) {
@@ -329,7 +366,7 @@ ItemsStore.prototype._requestReadMultipleItems = function(items, callback) {
 ItemsStore.prototype._requestReadSingleItem = function(item, callback) {
 	this.desc.readSingleItem(item, function(err, newData) {
 		if(err) {
-			// TODO handle error
+			this.setItemError(item.id, err);
 		}
 		if(newData !== undefined) {
 			this.setItemData(item.id, newData);
@@ -525,16 +562,36 @@ ItemsStore.prototype._request = function(callback) {
 	callback();
 };
 
+ItemsStore.prototype.setItemError = function(id, newError) {
+	var item = this.items["_" + id];
+	if(!item) {
+		item = this._createItem();
+		item.data = this.desc.applyNewError(undefined, newError);
+		item.error = newError;
+		item.tick = this.updateTick;
+		this.items["_" + id] = item;
+		return;
+	}
+	newData = this.desc.applyNewError(item.data, newError);
+	item.error = newError;
+	this._setItemNewData(id, item, newData)
+};
+
 ItemsStore.prototype.setItemData = function(id, newData) {
 	var item = this.items["_" + id];
 	if(!item) {
-		this.items["_" + id] = {
-			data: this.desc.applyNewData(undefined, newData),
-			tick: this.updateTick
-		};
+		item = this._createItem();
+		item.data = this.desc.applyNewData(undefined, newData);
+		item.tick = this.updateTick;
+		this.items["_" + id] = item;
 		return;
 	}
 	newData = this.desc.applyNewData(item.data, newData);
+	item.error = null;
+	this._setItemNewData(id, item, newData)
+};
+
+ItemsStore.prototype._setItemNewData = function(id, item, newData) {
 	if(item.newData !== undefined) {
 		item.update = this.desc.rebaseUpdate(item.update, item.data, newData);
 		item.newData = this.desc.applyUpdate(newData, item.update);
@@ -653,4 +710,8 @@ function rebaseUpdate(update, oldData, newData) {
 
 function applyNewData(oldData, newData) {
 	return newData;
+}
+
+function applyNewError(oldData, newError) {
+	return null;
 }

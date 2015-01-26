@@ -107,9 +107,13 @@ If multiple requests are scheduled they are processed in this order: 1. create, 
 
 `rebaseUpdate` default to an identity function that just returns `update`.
 
-`applyNewData: function(oldData, newData)` Apply new data (from `ItemsStore.setItemData`) to old data. The new data for the items is returned. Usually the function doesn't modify `oldData`, but this is not required by items-store (but react requires immutable props and state). A possible optimization is to return the `oldData` object when it is equal to `newData` (and do the same for nested objects).
+`applyNewData: function(oldData, newData)` Apply new data (from `ItemsStore.setItemData`) to old data. The new data for the item is returned. Usually the function doesn't modify `oldData`, but this is not required by items-store (but react requires immutable props and state). A possible optimization is to return the `oldData` object when it is equal to `newData` (and do the same for nested objects).
 
 `applyNewData` defaults to an identity function that just returns `newData`.
+
+`applyNewError: function(oldData, newError)` Same as `applyNewData`, but for `ItemsStore.setItemError`. The new data for the item is returned. Usually the function returns same kind of marker data that signals an error to readers. The function should not modify `oldData`, but it can copy it to the error marker to display cached data in cause of an error.
+
+`applyNewError` defaults to a function that returns `null`.
 
 **timing**
 
@@ -243,7 +247,7 @@ The context of the component must contain a key `stores` which is an object cont
 
 This function should create the component state from `stores` and `params` and return it.
 
-`stores` is an object containing a dependency-tracking version of each store i. e. 
+`stores` is an object containing a dependency-tracking version of each store i. e.
 ```
 {
 	Messages: {
