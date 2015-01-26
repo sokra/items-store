@@ -608,14 +608,14 @@ ItemsStore.prototype._setItemNewData = function(id, item, newData) {
 		if(idx >= 0)
 			this.invalidItems.splice(idx, 1);
 	}
-	if(item.infoHandlers) {
-		var handlers = item.infoHandlers.slice();
-		handlers.forEach(function(fn) {
+	var infoHandlers = item.infoHandlers && item.infoHandlers.slice();
+	var handlers = item.handlers && item.handlers.slice();
+	if(infoHandlers) {
+		infoHandlers.forEach(function(fn) {
 			fn();
 		});
 	}
-	if(item.handlers && oldData !== newData) {
-		var handlers = item.handlers.slice();
+	if(handlers && oldData !== newData) {
 		handlers.forEach(function(fn) {
 			fn(item.newData !== undefined ? item.newData : newData);
 		});
