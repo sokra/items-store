@@ -61,7 +61,8 @@ ItemsStore.prototype._createItem = function() {
 		error: undefined,
 		outdated: undefined,
 		tick: undefined,
-		handlers: undefined
+		handlers: undefined,
+		infoHandlers: undefined
 	};
 }
 
@@ -96,6 +97,12 @@ ItemsStore.prototype.update = function(allOrId) {
 		if(!item.outdated) {
 			item.outdated = true;
 			this.invalidateItem(id);
+			if(item.infoHandlers) {
+				var handlers = item.infoHandlers.slice();
+				handlers.forEach(function(fn) {
+					fn(item.newData !== undefined ? item.newData : item.data);
+				});
+			}
 		}
 	} else {
 		this.updateTick++;
@@ -154,34 +161,31 @@ ItemsStore.prototype.listenToItem = function(id, handler) {
 }
 
 ItemsStore.prototype.waitForItem = function(id, callback) {
+	var self = this;
 	var onUpdate = function() {
-		if(item.data === undefined || item.outdated) return;
-		var idx = item.handlers.indexOf(onUpdate);
+		if(!self.isItemUpToDate(id)) return;
+		var idx = item.infoHandlers.indexOf(onUpdate);
 		if(idx < 0) return;
-		item.handlers.splice(idx, 1);
-		item.leases.splice(idx, 1);
+		item.infoHandlers.splice(idx, 1);
 		callback();
 	};
 
 	var item = this.items["_" + id];
 	if(!item) {
 		item = this._createItem();
-		item.handlers = [onUpdate];
-		item.leases = [null];
+		item.infoHandlers = [onUpdate];
 		item.outdated = true;
 		this.items["_" + id] = item;
 		this.invalidateItem(id);
 	} else {
-		if(item.data !== undefined && !item.outdated && item.tick === this.updateTick) {
+		if(this.isItemUpToDate(id)) {
 			callback();
 			return;
 		}
-		if(item.handlers) {
-			item.handlers.push(onUpdate);
-			item.leases.push(null);
+		if(item.infoHandlers) {
+			item.infoHandlers.push(onUpdate);
 		} else {
-			item.handlers = [onUpdate];
-			item.leases = [null];
+			item.infoHandlers = [onUpdate];
 		}
 		if(!item.outdated && item.tick !== this.updateTick) {
 			item.outdated = true;
@@ -249,7 +253,6 @@ ItemsStore.prototype.updateItem = function(id, update) {
 			fn(item.newData);
 		});
 	}
-
 };
 
 ItemsStore.prototype.createItem = function(data, handler) {
@@ -604,6 +607,12 @@ ItemsStore.prototype._setItemNewData = function(id, item, newData) {
 		var idx = this.invalidItems.indexOf(id);
 		if(idx >= 0)
 			this.invalidItems.splice(idx, 1);
+	}
+	if(item.infoHandlers) {
+		var handlers = item.infoHandlers.slice();
+		handlers.forEach(function(fn) {
+			fn();
+		});
 	}
 	if(item.handlers && oldData !== newData) {
 		var handlers = item.handlers.slice();
