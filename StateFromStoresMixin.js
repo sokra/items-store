@@ -70,7 +70,7 @@ module.exports = {
 		if(!newContext) return;
 		var This = this.constructor;
 		this.setState(this.itemsStoreLease.capture(function(addDepenency) {
-			return This.getState(makeStores(newContext.stores, addDepenency), newContext.getCurrentParams && newContext.getCurrentParams());
+			return This.getState(makeStores(newContext.stores, addDepenency), newContext.router && newContext.router.getCurrentParams && newContext.router.getCurrentParams());
 		}.bind(this), this.StateFromStoresMixin_onUpdate));
 	},
 	contextTypes: {
