@@ -6,4 +6,4 @@ exports.ItemsStore = require("./ItemsStore");
 exports.ItemsStoreLease = require("./ItemsStoreLease");
 exports.ItemsStoreFetcher = require("./ItemsStoreFetcher");
 exports.Actions = require("./Actions");
-exports.StateFromStoresMixin = require("./StateFromStoresMixin");
+exports.createContainer = require("./createContainer");
