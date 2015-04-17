@@ -35,10 +35,11 @@ function makeStores(stores, addDependency) {
 }
 
 module.exports = function createContainer(Component) {
+	var componentName = Component.displayName || Component.name;
 	if(!Component.getProps)
-		throw new Error("Passed Component " + Component.displayName + " has no static getProps function");
+		throw new Error("Passed Component " + componentName + " has no static getProps function");
 	return React.createClass({
-		displayName: Component.displayName + "Container",
+		displayName: componentName + "Container",
 		statics: {
 			chargeStores: function(stores, params, callback) {
 				ItemsStoreFetcher.fetch(function(addDependency) {
