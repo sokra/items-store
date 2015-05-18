@@ -80,8 +80,8 @@ describe("ItemsStore Read", function() {
 		store.isItemAvailable("def").should.be.eql(true);
 		store.isItemAvailable("ghi").should.be.eql(false);
 		store.getData().should.be.eql({
-			_abc: "databc",
-			_def: "defata"
+			$abc: "databc",
+			$def: "defata"
 		});
 	});
 });

@@ -81,7 +81,7 @@ ItemsStore.prototype.getData = function() {
 
 ItemsStore.prototype.outdate = function(id) {
 	if(typeof id === "string") {
-		var item = this.items["_" + id];
+		var item = this.items["$" + id];
 		if(!item) return;
 		item.tick = null;
 	} else {
@@ -92,7 +92,7 @@ ItemsStore.prototype.outdate = function(id) {
 ItemsStore.prototype.update = function(allOrId) {
 	if(typeof allOrId === "string") {
 		var id = allOrId;
-		var item = this.items["_" + id];
+		var item = this.items["$" + id];
 		if(!item) return;
 		if(!item.outdated) {
 			item.outdated = true;
@@ -122,7 +122,7 @@ ItemsStore.prototype.listenToItem = function(id, handler) {
 	if(typeof handler !== "function") throw new Error("handler argument must be a function");
 	var lease = {
 		close: function lease() {
-			var item = this.items["_" + id];
+			var item = this.items["$" + id];
 			if(!item) return;
 			var idx = item.handlers.indexOf(handler);
 			if(idx < 0) return;
@@ -131,13 +131,13 @@ ItemsStore.prototype.listenToItem = function(id, handler) {
 			// TODO stream: if item.handlers.length === 0
 		}.bind(this)
 	};
-	var item = this.items["_" + id];
+	var item = this.items["$" + id];
 	if(!item) {
 		item = this._createItem();
 		item.handlers = [handler];
 		item.leases = [lease];
 		item.outdated = true;
-		this.items["_" + id] = item;
+		this.items["$" + id] = item;
 		this.invalidateItem(id);
 	} else {
 		if(item.handlers) {
@@ -170,12 +170,12 @@ ItemsStore.prototype.waitForItem = function(id, callback) {
 		callback();
 	};
 
-	var item = this.items["_" + id];
+	var item = this.items["$" + id];
 	if(!item) {
 		item = this._createItem();
 		item.infoHandlers = [onUpdate];
 		item.outdated = true;
-		this.items["_" + id] = item;
+		this.items["$" + id] = item;
 		this.invalidateItem(id);
 	} else {
 		if(this.isItemUpToDate(id)) {
@@ -195,23 +195,23 @@ ItemsStore.prototype.waitForItem = function(id, callback) {
 };
 
 ItemsStore.prototype.getItem = function(id) {
-	var item = this.items["_" + id];
+	var item = this.items["$" + id];
 	if(!item) return undefined;
 	return item.newData !== undefined ? item.newData : item.data;
 };
 
 ItemsStore.prototype.isItemAvailable = function(id) {
-	var item = this.items["_" + id];
+	var item = this.items["$" + id];
 	return !!(item && item.data !== undefined);
 };
 
 ItemsStore.prototype.isItemUpToDate = function(id) {
-	var item = this.items["_" + id];
+	var item = this.items["$" + id];
 	return !!(item && item.data !== undefined && !item.outdated && item.tick === this.updateTick);
 };
 
 ItemsStore.prototype.getItemInfo = function(id) {
-	var item = this.items["_" + id];
+	var item = this.items["$" + id];
 	if(!item) return {
 		available: false,
 		outdated: false,
@@ -231,11 +231,11 @@ ItemsStore.prototype.getItemInfo = function(id) {
 ItemsStore.prototype.updateItem = function(id, update) {
 	if(!this.supportWrite)
 		throw new Error("Store doesn't support updating of items");
-	var item = this.items["_" + id];
+	var item = this.items["$" + id];
 	if(!item) {
 		item = this._createItem();
 		item.update = update;
-		this.items["_" + id] = item;
+		this.items["$" + id] = item;
 	} else {
 		if(item.data !== undefined) {
 			item.newData = this.desc.applyUpdate(item.newData !== undefined ? item.newData : item.data, update);
@@ -431,7 +431,7 @@ ItemsStore.prototype._requestDeleteSingleItem = function(item, callback) {
 	this.desc.deleteSingleItem(item, function(err) {
 		if(item.handler) item.handler(err);
 		if(!err) {
-			delete this.items["_" + item.id];
+			delete this.items["$" + item.id];
 		}
 		this._queueRequest();
 		callback();
@@ -445,7 +445,7 @@ ItemsStore.prototype._requestDeleteMultipleItems = function(items, callback) {
 				items[i].handler(err);
 			}
 			if(!err) {
-				delete this.items["_" + items[i].id];
+				delete this.items["$" + items[i].id];
 			}
 		}
 		this._queueRequest();
@@ -566,13 +566,13 @@ ItemsStore.prototype._request = function(callback) {
 };
 
 ItemsStore.prototype.setItemError = function(id, newError) {
-	var item = this.items["_" + id];
+	var item = this.items["$" + id];
 	if(!item) {
 		item = this._createItem();
 		item.data = this.desc.applyNewError(undefined, newError);
 		item.error = newError;
 		item.tick = this.updateTick;
-		this.items["_" + id] = item;
+		this.items["$" + id] = item;
 		return;
 	}
 	newData = this.desc.applyNewError(item.data, newError);
@@ -581,12 +581,12 @@ ItemsStore.prototype.setItemError = function(id, newError) {
 };
 
 ItemsStore.prototype.setItemData = function(id, newData) {
-	var item = this.items["_" + id];
+	var item = this.items["$" + id];
 	if(!item) {
 		item = this._createItem();
 		item.data = this.desc.applyNewData(undefined, newData);
 		item.tick = this.updateTick;
-		this.items["_" + id] = item;
+		this.items["$" + id] = item;
 		return;
 	}
 	newData = this.desc.applyNewData(item.data, newData);
@@ -654,7 +654,7 @@ ItemsStore.prototype._popWriteableItem = function(multiple, willRead) {
 	var results = [];
 	for(var i = 0; i < this.invalidItems.length; i++) {
 		var id = this.invalidItems[i];
-		var item = this.items["_" + id];
+		var item = this.items["$" + id];
 		if(item.update) {
 			var result = {
 				id: id,
@@ -685,7 +685,7 @@ ItemsStore.prototype._popReadableItem = function(multiple) {
 	var results = [];
 	for(var i = 0; i < this.invalidItems.length; i++) {
 		var id = this.invalidItems[i];
-		var item = this.items["_" + id];
+		var item = this.items["$" + id];
 		if(item.outdated) {
 			var result = {
 				id: id,
