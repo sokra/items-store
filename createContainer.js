@@ -13,6 +13,19 @@ function makeStores(stores, addDependency) {
 	}
 	return Object.keys(stores).reduce(function(obj, key) {
 		obj[key] = {
+			getData: function(){
+				var data = {};
+				return stores[key].items;
+				var hasData = false;
+				Object.keys(stores[key].items).forEach(function(key) {
+					if(stores[key][key].data) {
+						data[key] = stores[key][key].data;
+						hasData = true;
+					}
+				}, this);
+				if(hasData)
+					return data;
+			},
 			getItem: function(id) {
 				addDependency(stores[key], id);
 				return stores[key].getItem(id);
