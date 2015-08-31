@@ -41,9 +41,9 @@ module.exports = function createContainer(Component) {
 	return React.createClass({
 		displayName: componentName + "Container",
 		statics: {
-			chargeStores: function(stores, params, callback) {
+			chargeStores: function(stores, params, query, callback) {
 				ItemsStoreFetcher.fetch(function(addDependency) {
-					Component.getProps(makeStores(stores, addDependency), params);
+					Component.getProps(makeStores(stores, addDependency), params, query);
 				}.bind(this), callback);
 			}
 		},
@@ -52,8 +52,9 @@ module.exports = function createContainer(Component) {
 			var stores = this.context.stores;
 			var router = this.context.router;
 			var params = router && router.getCurrentParams && router.getCurrentParams();
+			var query = router && router.getCurrentQuery && router.getCurrentQuery();
 			return this.lease.capture(function(addDependency) {
-				return Component.getProps(makeStores(stores, addDependency), params);
+				return Component.getProps(makeStores(stores, addDependency), params, query);
 			}, this._onUpdate);
 		},
 		_onUpdate: function() {
@@ -71,8 +72,9 @@ module.exports = function createContainer(Component) {
 			var stores = this.context.stores;
 			var router = this.context.router;
 			var params = router && router.getCurrentParams && router.getCurrentParams();
+			var query = router && router.getCurrentQuery && router.getCurrentQuery();
 			this.setState(this.lease.capture(function(addDependency) {
-				return Component.getProps(makeStores(stores, addDependency), params);
+				return Component.getProps(makeStores(stores, addDependency), params, query);
 			}, this._onUpdate));
 		},
 		componentWillReceiveProps: function(newProps, newContext) {
@@ -81,8 +83,9 @@ module.exports = function createContainer(Component) {
 			var stores = newContext.stores;
 			var router = newContext.router;
 			var params = router && router.getCurrentParams && router.getCurrentParams();
+			var query = router && router.getCurrentQuery && router.getCurrentQuery();
 			this.setState(this.lease.capture(function(addDependency) {
-				return Component.getProps(makeStores(stores, addDependency), params);
+				return Component.getProps(makeStores(stores, addDependency), params, query);
 			}, this._onUpdate));
 		},
 		componentWillUnmount: function() {
