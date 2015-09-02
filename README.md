@@ -28,7 +28,7 @@ A helper class which leases multiple items from multiple stores. It captures dep
 
 ### createContainer
 
-A wrapper for a React component. It expects a static `getProps` method from the component that calculate `props` from stores (and params when using react-router). The wrapper container handles listening to changes and charging of stores.
+A wrapper for a React component. It expects a static `getProps` method from the component that calculates `props` from stores (plus `params` and `query` when using react-router). The wrapper container handles listening to changes and charging of stores.
 
 The usable API inside the `getProps` method is very simple and synchronous. See API > createContainer.
 
@@ -243,9 +243,9 @@ It's expected from the component to provide a static `getProps` function.
 
 The context of the component must contain a key `stores` which is an object containing all stores (i. e. `{Messages: [ItemsStore], Users: [ItemsStore]}`).
 
-#### static `getProps(stores, params)`
+#### static `getProps(stores, params, query)`
 
-This function should create the component `props` from `stores` and `params` and return it.
+This function should create the component `props` from `stores`, `params`, and `query` and return it.
 
 `stores` is an object containing a dependency-tracking version of each store i. e.
 ```
@@ -265,7 +265,7 @@ This function should create the component `props` from `stores` and `params` and
 }
 ```
 
-`params` is the params object from `react-router` (if used)
+`params` and `query` are objects from `react-router` (if used)
 
 Example for a `getProps` method:
 
@@ -291,13 +291,15 @@ statics: {
 
 **wrapper methods**
 
-#### static `chargeStores(stores, params, callback)`
+#### static `chargeStores(stores, params, query, callback)`
 
 Prepares stores with an `ItemsStoreFetcher`.
 
 `stores` The object of `ItemsStores`, like the `stores` key in the context.
 
 `params` params object from `react-router`.
+
+`query` query object from `react-router`.
 
 
 
